@@ -1,8 +1,5 @@
 import json
 
-
-
-
 def save_history(history):
     with open('history.json', 'w') as f:
         json.dump(history, f, indent=4)

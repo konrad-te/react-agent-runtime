@@ -2,7 +2,7 @@ from tools import execute_bash
 from config import MAX_STEPS, SYSTEM_PROMPT, MAX_HISTORY
 from memory import save_history, load_history
 
-import google.genai as genai
+from google import genai
 import os
 from dotenv import load_dotenv
 
@@ -29,9 +29,8 @@ def run_agent(user_input):
         )
 
         try:
-
             response = client.models.generate_content(
-                model="gemini-2.5-flash",
+                model="gemini-3.5-flash",
                 contents=full_prompt
             )
 

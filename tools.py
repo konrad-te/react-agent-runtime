@@ -1,11 +1,15 @@
 import subprocess
 import shlex
-from config import BLOCKED_COMMANDS
+from config import BLOCKED_COMMANDS, BLOCKED_FILES
 
 def execute_bash(command):
     try:
         parsed_command = shlex.split(command)
         base_command = parsed_command[0]
+        arguments = parsed_command[1:]
+        for argument in arguments:
+            if argument in BLOCKED_FILES:
+                return "Access denied"
         if base_command in BLOCKED_COMMANDS:
             return "Command blocked for safety"
         
@@ -20,6 +24,8 @@ def execute_bash(command):
         return str(e)
     
 def read_file(filename):
+    if filename in BLOCKED_FILES:
+        return "Access denied"
     try:
         with open(filename, "r") as file:
             return file.read()
