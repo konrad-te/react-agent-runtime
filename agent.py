@@ -1,9 +1,10 @@
-from tools import execute_bash, read_file, write_file, delete_file
+from tools import execute_bash, read_file, write_file, delete_file, replace_in_file
 from config import MAX_STEPS, SYSTEM_PROMPT, MAX_HISTORY
 from memory import save_history, load_history
 
 from google import genai
 import os
+import json
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -55,103 +56,75 @@ def run_agent(user_input):
         )
         save_history(conversation_history)
 
-        if "FINAL ANSWER:" in assistant_text:
+        try:
+            assistant_data = json.loads(assistant_text)
+        except json.JSONDecodeError:
+            print("Invalid JSON response from model")
             break
 
-        if "ACTION: bash" in assistant_text:
+        response_type = assistant_data.get("type")
 
-            command = (
-                assistant_text
-                .split("COMMAND:")[1]
-                .strip()
-            )
+        if response_type == "final":
+            print("\nFinal answer:")
+            print(assistant_data.get("message", ""))
+            break
+
+        if response_type != "tool_call":
+            print("Invalid response type")
+            break
+
+        tool = assistant_data.get("tool")
+
+        if tool == "bash":
+            command = assistant_data.get("command", "")
 
             print("\nExecuting command:")
             print(command)
 
-            command_output = execute_bash(command)
+            tool_output = execute_bash(command)
 
-            print("\nCommand output:")
-            print(command_output)
-
-            conversation_history.append(
-                f"Tool output: {command_output}"
-            )
-            save_history(conversation_history)
-            
-        if "ACTION: read_file" in assistant_text:
-
-            file = (
-                assistant_text
-                .split("FILE:")[1]
-                .strip()
-            )
+        elif tool == "read_file":
+            filename = assistant_data.get("file", "")
 
             print("\nReading the following file:")
-            print(file)
+            print(filename)
 
-            file_output = read_file(file)
+            tool_output = read_file(filename)
 
-            print("\nFile output:")
-            print(file_output)
-            
-            conversation_history.append(
-                f"Tool output: {file_output}"
-            )
-            save_history(conversation_history)
-
-        if "ACTION: write_file" in assistant_text:
-
-            if "FILE:" not in assistant_text:
-                print("Invalid format")
-                break
-
-            file_name = (
-                assistant_text
-                .split("FILE:")[1]
-                .split("CONTENT:")[0]
-                .strip()
-            )
-
-            content = (
-                assistant_text
-                .split("CONTENT:")[1]
-                .strip()
-            )
+        elif tool == "write_file":
+            filename = assistant_data.get("file", "")
+            content = assistant_data.get("content", "")
 
             print("\nCreating a file:")
-            print(file_name)
+            print(filename)
 
-            file_output = write_file(file_name, content)
+            tool_output = write_file(filename, content)
 
-            print("\nFile output:")
-            print(file_output)
+        elif tool == "replace_in_file":
+            filename = assistant_data.get("file", "")
+            old_text = assistant_data.get("old", "")
+            new_text = assistant_data.get("new", "")
 
-            conversation_history.append(
-                f"Tool output: {file_output}"
-            )
-            save_history(conversation_history)
+            print("\nReplacing text in file:")
+            print(filename)
 
-        if "ACTION: delete_file" in assistant_text:
+            tool_output = replace_in_file(filename, old_text, new_text)
 
-            filename = (
-                assistant_text
-                .split("FILE:")[1]
-                .strip()
-            )
+        elif tool == "delete_file":
+            filename = assistant_data.get("file", "")
 
             print("\nRemove the following file")
             print(filename)
 
-            file_output = delete_file(filename)
-
-            print("\nFile output:")
-            print(file_output)
-
-            conversation_history.append(
-                f"Tool output: {file_output}"
-            )
-            save_history(conversation_history)
+            tool_output = delete_file(filename)
 
         else:
-            break
+            tool_output = f"Unknown tool: {tool}"
+
+        print("\nTool output:")
+        print(tool_output)
+
+        conversation_history.append(
+            f"Tool output: {tool_output}"
+        )
+        save_history(conversation_history)
