@@ -2,3 +2,4 @@ venv/
 .env
 __pycache__/
 history.json
+presentation_notes.md
