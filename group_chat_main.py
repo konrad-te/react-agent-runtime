@@ -14,6 +14,7 @@ def get_message_id(message):
             message.get("id")
             or message.get("seq")
             or message.get("sequence")
+            or message.get("message_id")
             or message.get("timestamp")
             or message.get("created_at")
             or message
@@ -27,9 +28,9 @@ def get_message_text(message):
         return str(message)
 
     return (
-        message.get("message")
+        message.get("content")
+        or message.get("message")
         or message.get("text")
-        or message.get("content")
         or message.get("body")
         or ""
     )
@@ -40,7 +41,8 @@ def get_message_agent(message):
         return ""
 
     return (
-        message.get("agent")
+        message.get("agent_name")
+        or message.get("agent")
         or message.get("sender")
         or message.get("author")
         or message.get("name")
@@ -60,12 +62,17 @@ def is_own_message(message):
 
 def remember_existing_messages():
     """marks old messages as seen before the agent starts"""
-    messages = fetch_messages()
+    try:
+        messages = fetch_messages()
+    except Exception as e:
+        print(f"could not fetch existing messages yet: {e}")
+        return False
 
     for message in messages:
         seen_message_ids.add(get_message_id(message))
 
     print(f"remembered {len(seen_message_ids)} existing messages")
+    return True
 
 def handle_message(message):
     """handles one group chat message if it needs an answer"""
@@ -93,7 +100,8 @@ def handle_message(message):
 
 def run_group_chat_loop():
     """runs the agent inside the shared group chat"""
-    remember_existing_messages()
+    while not remember_existing_messages():
+        time.sleep(POLL_SECONDS)
 
     while True:
         try:
